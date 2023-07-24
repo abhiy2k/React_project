@@ -5,18 +5,6 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { Post } from "./interfaces/UserDetails";
 import DepartmentList from "./DepartmentList"; 
 
-// Json data
-const departmentsData = [
-  {
-    department: "customer_service",
-    sub_departments: ["support", "customer_success"],
-  },
-  {
-    department: "design",
-    sub_departments: ["graphic_design", "product_design", "web_design"],
-  },
-];
-
 const SecondPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const navigate = useNavigate();
@@ -54,7 +42,7 @@ const SecondPage: React.FC = () => {
     <div style={{ height: 400, width: "100%" }}>
       <h2>Second Page</h2>
       <DataGrid rows={posts} columns={columns} />
-      <DepartmentList data={departmentsData} />  {/*Passing the hardcored Json data*/}
+      <DepartmentList />
     </div>
   );
 };

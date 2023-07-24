@@ -1,107 +1,171 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Checkbox,
-  Collapse,
   List,
   ListItem,
-  ListItemIcon,
   ListItemText,
-} from "@mui/material";
-import { ExpandLess, ChevronRight } from "@mui/icons-material";
+  Collapse,
+  IconButton,
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
+// Define the interface for the Department object
 interface Department {
-  department: string;
-  sub_departments: string[];
+  id: number;
+  name: string;
+  children: Department[];
 }
 
-interface DepartmentListProps {
-  data: Department[];
-}
+const DepartmentList: React.FC = () => {
+  // State variables to keep track of expanded department and selected items
+  const [expandedParent, setExpandedParent] = useState<{ [key: number]: boolean }>({});
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
 
-const DepartmentList: React.FC<DepartmentListProps> = ({ data }) => {
-  const [open, setOpen] = useState<string | null>(null);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  // hardcored Json Data
+  const data: Department[] = [
+    {
+      id: 1,
+      name: 'customer_service',
+      children: [
+        { id: 11, name: 'support', children: [] },
+        { id: 12, name: 'customer_success', children: [] },
+        // Add more sub departments as needed
+      ],
+    },
+    {
+      id: 2,
+      name: 'design',
+      children: [
+        { id: 21, name: 'graphic_design', children: [] },
+        { id: 22, name: 'product_design', children: [] },
+        { id: 23, name: 'web_design', children: [] },
+        // Add more sub departments as required
+      ],
+    },
+    // Add more departments as required
+  ];
 
-  // Handle click on department to expand or collapse its sub-departments
-  const handleItemClick = (department: string) => {
-    setOpen((prevOpen) => (prevOpen === department ? null : department));
+  // Adding a little UI and styling to the Deparment and sub department
+  const styles = {
+    parentItem: {
+      display: 'flex',
+      alignItems: 'center',
+      paddingLeft: 2,
+      backgroundColor: '#f5f5f5', 
+    },
+    childItem: {
+      display: 'flex',
+      alignItems: 'center',
+      paddingLeft: 10,
+      backgroundColor: 'white', 
+      borderLeft: '2px solid #e0e0e0', 
+    },
+    childOffset: {
+      marginLeft: 2,
+    },
   };
 
-  // Handle click on checkbox to select or deselect all sub-departments of a department
-  const handleSelectAllSubDepartments = (department: string) => {
-    if (isDepartmentSelected(department)) {
-      // If all sub-departments are selected, remove department and all sub-departments from selection
-      setSelectedItems((prevSelectedItems) =>
-        prevSelectedItems.filter(
-          (item) =>
-            item !== department &&
-            !(data.find((d) => d.department === department)?.sub_departments ?? []).includes(item)
-        )
+  // Function to handle expanding/collapsing of a department
+  const handleParentExpand = (parentId: number) => {
+    setExpandedParent((prevState) => ({
+      ...prevState,
+      [parentId]: !prevState[parentId],
+    }));
+  };
+
+  // Function to handle selecting/unselecting of a department
+  const handleParentSelect = (parentId: number) => {
+    const parent = data.find((item) => item.id === parentId);
+    if (!parent) return;
+
+    const allChildrenSelected = parent.children.every((child) =>
+      selectedItems.includes(child.id)
+    );
+
+    let newSelectedItems: number[];
+    if (allChildrenSelected) {
+      newSelectedItems = selectedItems.filter(
+        (item) => item !== parentId && !parent.children.some((child) => child.id === item)
       );
     } else {
-      // If not all sub-departments are selected, add department and all sub-departments to selection
-      setSelectedItems((prevSelectedItems) => [
-        ...prevSelectedItems,
-        department,
-        ...(data.find((d) => d.department === department)?.sub_departments ?? []),
-      ]);
+      newSelectedItems = [...selectedItems, parentId, ...parent.children.map((child) => child.id)];
     }
+
+    setSelectedItems(newSelectedItems);
   };
 
-  // Handle click on checkbox to individually select or deselect a sub-department
-  const handleSelectSubDepartment = (subDepartment: string) => {
-    setSelectedItems((prevSelectedItems) =>
-      prevSelectedItems.includes(subDepartment)
-        ? prevSelectedItems.filter((item) => item !== subDepartment)
-        : [...prevSelectedItems, subDepartment]
+  // Function to handle selecting/unselecting of a sub department
+  const handleChildSelect = (childId: number, parentId: number) => {
+    const parent = data.find((item) => item.id === parentId);
+    if (!parent) return;
+
+    const childIndex = selectedItems.indexOf(childId);
+
+    let newSelectedItems: number[];
+    if (childIndex !== -1) {
+      newSelectedItems = selectedItems.filter((item) => item !== childId);
+    } else {
+      newSelectedItems = [...selectedItems, childId];
+    }
+
+    setSelectedItems(newSelectedItems);
+
+    // If all sub department are selected, also select the department
+    const allChildrenSelected = parent.children.every((child) =>
+      newSelectedItems.includes(child.id)
     );
-  };
 
-  // Check if a department is selected by checking if it and all its sub-departments are in the selection
-  const isDepartmentSelected = (department: string) => {
-    const departmentData = data.find((item) => item.department === department);
-    if (departmentData) {
-      const allSubDepartments = departmentData.sub_departments;
-      return (
-        selectedItems.includes(department) &&
-        allSubDepartments.every((subDepartment) => selectedItems.includes(subDepartment))
-      );
+    const isParentSelected = newSelectedItems.includes(parentId);
+    if (allChildrenSelected && !isParentSelected) {
+      setSelectedItems((prevSelected) => [...prevSelected, parentId]);
+    } else if (!allChildrenSelected && isParentSelected) {
+      setSelectedItems((prevSelected) => prevSelected.filter((item) => item !== parentId));
     }
-    return selectedItems.includes(department);
   };
 
   return (
     <List>
-      {data.map(({ department, sub_departments }) => (
-        <React.Fragment key={department}>
-          <ListItem button onClick={() => handleItemClick(department)}>
-            <ListItemIcon>
-              {open === department ? <ExpandLess /> : <ChevronRight />}
-              <Checkbox
-                edge="start"
-                checked={isDepartmentSelected(department)}
-                onClick={() => handleSelectAllSubDepartments(department)}
-              />
-            </ListItemIcon>
-            <ListItemText primary={<strong>{department}</strong>} />
+      {data.map((parent) => (
+        <React.Fragment key={parent.id}>
+          <ListItem button sx={styles.parentItem}>
+            {expandedParent[parent.id] ? (
+              <IconButton onClick={() => handleParentExpand(parent.id)}>
+                <ExpandLessIcon />
+              </IconButton>
+            ) : (
+              <IconButton onClick={() => handleParentExpand(parent.id)}>
+                <ExpandMoreIcon />
+              </IconButton>
+            )}
+            <Checkbox
+              edge="start"
+              checked={selectedItems.includes(parent.id)}
+              indeterminate={
+                parent.children.some((child) => selectedItems.includes(child.id)) &&
+                !selectedItems.includes(parent.id)
+              }
+              onClick={() => handleParentSelect(parent.id)}
+              tabIndex={-1}
+              disableRipple
+            />
+            <ListItemText
+              primary={`${parent.name} (${parent.children.length})`}
+              sx={{ marginLeft: 1 }} // Adjust the marginLeft as needed
+            />
           </ListItem>
-          <Collapse in={open === department} timeout="auto" unmountOnExit>
+          <Collapse in={expandedParent[parent.id]} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {sub_departments.map((subDepartment) => (
-                <ListItem
-                  key={subDepartment}
-                  button
-                  style={{ paddingLeft: "40px" }} // Offset the sub-departments to the right
-                  onClick={() => handleSelectSubDepartment(subDepartment)}
-                >
-                  <ListItemIcon>
-                    <Checkbox
-                      edge="start"
-                      checked={selectedItems.includes(subDepartment)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </ListItemIcon>
-                  <ListItemText primary={subDepartment} />
+              {parent.children.map((child) => (
+                <ListItem key={child.id} button sx={styles.childItem}>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedItems.includes(child.id)}
+                    onClick={() => handleChildSelect(child.id, parent.id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemText primary={child.name} sx={styles.childOffset} />
                 </ListItem>
               ))}
             </List>
